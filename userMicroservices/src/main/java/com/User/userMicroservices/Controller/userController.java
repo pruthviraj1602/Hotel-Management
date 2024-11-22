@@ -3,7 +3,10 @@ package com.User.userMicroservices.Controller;
 import com.User.userMicroservices.Entities.Hotel;
 import com.User.userMicroservices.Entities.Rating;
 import com.User.userMicroservices.Entities.User;
+import com.User.userMicroservices.External.Services.hotelServices;
+import com.User.userMicroservices.External.Services.ratingService;
 import com.User.userMicroservices.Services.IMPL.userServiceIMPL;
+import com.netflix.discovery.converters.Auto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +25,15 @@ public class userController {
     @Autowired
     private userServiceIMPL userServiceIMPL;
 
+    //Used for the microservices communication
+//    @Autowired
+//    private RestTemplate restTemplate;
+
     @Autowired
-    private RestTemplate restTemplate;
+    private hotelServices hotelServices;
+
+    @Autowired
+    private ratingService ratingService;
 
 
 
@@ -49,13 +59,19 @@ public class userController {
     @GetMapping("/getUser/{userId}")
     public ResponseEntity<User> getUser(@PathVariable Integer userId){
         User user = userServiceIMPL.getUser(userId);
-        Rating[] ratingOUser= restTemplate.getForEntity("http://localhost:8083/rating/getUserRating/"+userId, Rating[].class).getBody();
 
+        //Gating the data using localhost url
+//        Rating[] ratingOUser= restTemplate.getForEntity("http://RATINGMICROSERVICE/rating/getUserRating/"+userId, Rating[].class).getBody();
+
+        Rating[] ratingOUser=ratingService.getUserRating(userId).getBody().toArray(new Rating[0]);
+                //Now put in the arry list
         List<Rating> ratings = Arrays.stream(ratingOUser).toList();
 
+        //Getting the hotel throw the id that the stored int the rating services
         List<Rating> ratingList = ratings.stream().map(rating -> {
-            Hotel body = restTemplate.getForEntity("http://localhost:8082/hotel/getHotel/"+rating.getHotelId(), Hotel.class).getBody();
+//            Hotel body = restTemplate.getForEntity("http://HOTELMICROSERVICE/hotel/getHotel/"+rating.getHotelId(), Hotel.class).getBody();
 
+            Hotel body=hotelServices.getHotel(rating.getHotelId());
             rating.setHotel(body);
             return rating;
         }).collect(Collectors.toList());
